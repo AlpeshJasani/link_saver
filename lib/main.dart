@@ -97,19 +97,35 @@ class _LinkListScreenState extends State<LinkListScreen> {
               focusNode: _searchFocusNode,
               decoration: InputDecoration(
                 hintText: 'Search Links...',
+                hintStyle: TextStyle(color: Colors.grey[400]), // Change the hint text color here
                 filled: true,
                 fillColor: Colors.grey[800],
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(20),
                   borderSide: BorderSide.none,
                 ),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                  icon: Icon(Icons.clear, color: Colors.grey[400]),
+                  onPressed: () {
+                    _searchController.clear();
+                    _searchFocusNode.unfocus(); // Optional: removes focus
+                    // Notify any listeners of changes, if needed
+                  },
+                )
+                    : null,
               ),
               style: TextStyle(color: Colors.white),
+              onChanged: (text) {
+                // Update to show or hide the suffix icon based on text input
+                (context as Element).markNeedsBuild();
+              },
               onTap: () {
                 _searchFocusNode.requestFocus();
               },
             ),
           ),
+
         ),
         actions: [
           IconButton(
@@ -141,10 +157,18 @@ class _LinkListScreenState extends State<LinkListScreen> {
                 : _filteredLinks;
 
             return ListView.builder(
-              itemCount: linksToDisplay.length,
+              itemCount: linksToDisplay.length + 1, // Add an extra item for padding
               itemBuilder: (context, index) {
+                if (index == linksToDisplay.length) {
+                  // Return padding as the last item
+                  return SizedBox(height: 80); // Adjust height based on your FAB size
+                }
+
                 final link = linksToDisplay[index];
+
                 return ListTile(
+                  contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                  visualDensity: VisualDensity.compact,
                   title: Text(
                     link.title,
                     style: TextStyle(color: Colors.white),
@@ -156,32 +180,44 @@ class _LinkListScreenState extends State<LinkListScreen> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      IconButton(
-                        icon: Icon(Icons.edit, color: Colors.blueAccent),
-                        onPressed: () {
-                          _showEditLinkDialog(context, link, index);
-                        },
+                      SizedBox(
+                        width: 40,
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: Icon(Icons.edit, color: Colors.blueAccent),
+                          onPressed: () {
+                            // Find the actual index in the main list
+                            int actualIndex = linkProvider.links.indexOf(link);
+                            _showEditLinkDialog(context, link, actualIndex);
+                          },
+                        ),
                       ),
-                      IconButton(
-                        icon: Icon(Icons.delete, color: Colors.redAccent),
-                        onPressed: () {
-                          final deletedLink = linkProvider.links[index];
-                          linkProvider.deleteLink(index);
+                      SizedBox(
+                        width: 40,
+                        child: IconButton(
+                          padding: EdgeInsets.zero,
+                          icon: Icon(Icons.delete, color: Colors.redAccent),
+                          onPressed: () {
+                            // Find the actual index in the main list
+                            int actualIndex = linkProvider.links.indexOf(link);
+                            final deletedLink = linkProvider.links[actualIndex];
+                            linkProvider.deleteLink(actualIndex);
 
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Deleted ${deletedLink.title}'),
-                              action: SnackBarAction(
-                                label: 'Undo',
-                                textColor: Colors.deepPurpleAccent,
-                                onPressed: () {
-                                  linkProvider.restoreLastDeletedLink();
-                                },
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Deleted ${deletedLink.title}'),
+                                action: SnackBarAction(
+                                  label: 'Undo',
+                                  textColor: Colors.deepPurpleAccent,
+                                  onPressed: () {
+                                    linkProvider.restoreLastDeletedLink();
+                                  },
+                                ),
+                                duration: Duration(seconds: 3),
                               ),
-                              duration: Duration(seconds: 3),
-                            ),
-                          );
-                        },
+                            );
+                          },
+                        ),
                       ),
                     ],
                   ),
@@ -197,6 +233,7 @@ class _LinkListScreenState extends State<LinkListScreen> {
           },
         ),
       ),
+
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddLinkDialog(context),
         child: Icon(Icons.add),
@@ -255,6 +292,9 @@ class _LinkListScreenState extends State<LinkListScreen> {
                       url: _urlController.text,
                     ),
                   );
+
+                  // Unfocus the search field and hide the keyboard
+                  FocusScope.of(context).unfocus();
 
                   Navigator.of(context).pop();
                 }
